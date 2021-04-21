@@ -1,0 +1,219 @@
+# Simulating a renewal process with interarrival time distribution
+# F up to time T:
+
+# 1. Set t = 0, N = 0
+# 2. Generate an X distributed as F
+# 3. t = t + X. If t > T, then stop.
+# 4. Set N = N+1 and set t_{N} = t.
+# 5. Go back to step 2. 
+
+# When the algorithm stops, the value of N is N(t) and we have 
+# sequentially simulated all the desired arrival times t_1, t_2, ...
+
+################################################################################
+
+# Simulating a Poisson Process with rate lambda = 2.
+
+# Set the upper bound for the time interval
+T <- 5
+# Set the rate parameter
+lambda <- 2
+# Generate 100 iid exp(lambda) interarrival times T_1, T_2, ..., T_100 
+Tj <- rexp(100, lambda)
+# Sn = T_1 + T_2 + ... + T_n
+# Recall that Sn is the sequence of times at which arrivals occur
+Sn <- cumsum(Tj)
+Sn
+# By definition, N(t) := is the number of arrivals in the interval (0, t]
+# So N(t) = max{n : Sn <= T} or N(t) = min{n : Sn > T} - 1.
+NT <- min(which(Sn > T)) - 1
+NT
+# To get a step plot, we will grab the values from 1:(NT+1)
+# We want to plot up to the next renewal after time T.
+# What would happen if we only plotted up to time T?
+Sn[1:(NT+1)]
+# Create step plot
+sfun <- stepfun(Sn[1:(NT+1)], 0:length(Sn[1:(NT+1)]), f = 0)
+plot.stepfun(sfun,main="Poisson Process",xlab="t",ylab="N(t)")
+
+# Estimate mean, variance, and the pmf of N(5). 
+T<-10
+lambda<-5
+# Try: 100, 1000, 10000
+# Of course, the bigger our sample, the more accurate the simulation is.
+rN<-10000
+# Replicate is in the apply family, it is useful if you want to 
+# repeat a randomized experiment several times and store the 
+# results in a vector. Please note the structure of the replicate function. 
+# The things inside the {***} operate like a for loop. 
+NT<-replicate(rN, expr= {
+                  Tj<-rexp(100,lambda)
+                  Sn<-cumsum(Tj)
+                  min(which(Sn>T))-1 })
+
+#########################################################
+# Memoryless Poisson Process simulation
+NT1 <- integer(0)
+NT2 <- integer(0)
+for(i in 1:rN){
+   Tj<-rexp(100,lambda)
+   Sn<-cumsum(Tj)
+   NT1 <- append(NT1, min(which(Sn>T))-1)
+   # Remove all values below a threshold of 0.02
+   Tj2 <- Tj[which(Tj >= 0.02)]
+   # Then subtract this value 
+   Tj2 <- Tj2 - 0.02
+   Sn2<-cumsum(Tj2)
+   NT2 <- append(NT2, min(which(Sn2>T))-1)
+}
+hist(NT1)
+mean(NT1)
+
+hist(NT2)
+mean(NT2)
+#########################################################
+
+# Simulated P{N(t) = k}
+# Note: the table() function gives us a frequency table.
+simulated_probabilities = table(NT)/sum(table(NT))
+simulated_probabilities
+
+# Theoretical P{N(t) = k}
+n <- length(simulated_probabilities)
+k = seq(1:n)
+probs <- seq(1:n)
+for (i in 1:n) {
+   probs[i] = (exp(-lambda*T)*((lambda*T)^k[i]))/factorial(k[i])
+}
+round(probs, 4)
+sum(probs)
+
+# Simulated mean:
+mean(NT)
+# Theoretically, E[N(t)] = lambda*T.
+lambda*T
+# Recall that the Poisson distribution has equal mean and variance.
+# Simulated variance:
+var(NT)
+
+# Estimated pmf of N(t):
+hist(NT,prob=T)
+
+# It is a well known fact that the pmf for N(t) converges to a 
+# Poisson distribution with rate lambda*t.
+
+# That is, the number of events in any interval of length t
+# is a Poisson random variable with parameter lambda*t.
+hist(rpois(rN,lambda*T),prob=T)
+
+########################################################################
+
+# Simulate a Renewal Process at time t = 5 with a standard 
+# lognormally distributed interarrival times.
+
+t <- 5
+Tj <- rlnorm(100, 0, 1)
+Sn <- cumsum(Tj)
+RT <- min(which(Sn > t)) - 1
+RT
+Sn[1:(RT + 1)]
+
+sfun <- stepfun(Sn[1:(RT + 1)], 0:length(Sn[1:(RT + 1)]), f = 0)
+plot.stepfun(sfun, main = "Renewal Process", xlab = "t", ylab = "R(t)")
+
+# Estimate the pmf of R(5)
+rN <- 10000
+RT<-replicate(rN,expr={Tj<-rlnorm(100, 0, 1)
+Sn<-cumsum(Tj)
+min(which(Sn>t))-1})
+table(RT)/sum(table(RT))
+hist(RT,prob=TRUE)
+mean(RT)
+var(RT)
+
+
+######################################################################
+
+# Simulate a Renewal Process at time t = 5 with geometrically
+# distributed interarrival times.
+t <- 5
+p <- 0.6
+Tj <- rgeom(100, p)
+Sn <- cumsum(Tj)
+RT <- min(which(Sn > t))-1
+RT
+Sn[1:(RT+1)]
+
+sfun <- stepfun(Sn[1:(RT+1)], 0:length(Sn[1:(RT+1)]), f = 0)
+plot.stepfun(sfun, main = "Renewal Process", xlab = "t", ylab = "R(t)")
+
+# Estimate the pmf of R(5)
+rN <- 10000
+RT<-replicate(rN,expr={Tj<-rgeom(100, p)
+Sn<-cumsum(Tj)
+min(which(Sn>t))-1})
+table(RT)/sum(table(RT))
+hist(RT,prob=TRUE)
+mean(RT)
+var(RT)
+
+# Law of Large Numbers in Renewal Processes :
+# If mu is finite, then NT/t --> 1/mu as t --> infty with prob 1
+# Note that mu in this case is the mean of our distribution
+# of interarrival times. Similarly, sigma is the st. dev.
+
+# That is, 1/mu is the limiting average rate of arrivals per unit time
+
+# https://www.randomservices.org/random/renewal/LimitTheorems.html
+
+GeomRP <- function(p, t, rN){
+RT <- integer(0)
+for(i in 1:rN){
+   # note: rgeom has pmf ((1-p)^x)p
+   Tj<-rgeom(n = 400, prob = p)
+   Sn<-cumsum(Tj)
+   RT <- append(RT, min(which(Sn>t))-1)
+   if(i%%10 == 0) {
+      Sys.sleep(0.05)
+      hist(RT,prob=TRUE, col = "red", 
+           main = "Geometric Renewal Process")
+   }
+}
+return(list("mean" = mean(RT), 
+            "sd" = sd(RT),
+            "mu" = (1-p)/p,
+            "sig" = sqrt((1-p)/(p^2)),
+            "RT" = RT))
+}
+
+p = 0.6
+t = 100
+rN = 2000
+res <- GeomRP(p, t, rN)
+
+t/res$mu
+res$mean
+
+# Central Limit Theorem for counting processes
+# Goal: to show that the counting variable RT is asymptotically normal
+
+# Note the normal shape of the empirical dist.
+# Compare the empirical mean to t/mu
+res$mean
+t/res$mu
+
+# Compare empirical st. dev. to 
+res$sd
+(sqrt(t/(mu)^3))
+
+# Distribution of ZT converges to n(0,1) as t --> infty
+X <- res$RT
+mu <- res$mu
+sd <- res$sd
+se <- (sd)*(sqrt(t/(mu)^3))
+
+ZT <- (X-(t/mu))/se
+hist(ZT)
+
+
+
